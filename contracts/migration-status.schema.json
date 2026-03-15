@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "df-local-foundation/migration-status",
+  "title": "MigrationStatus",
+  "description": "Migration status report for a single app or the core foundation. Reported at startup and on demand. Used by health surfaces — must contain no customer or domain data.",
+  "type": "object",
+  "required": [
+    "target",
+    "schema_namespace",
+    "current_version",
+    "expected_version",
+    "migration_required",
+    "status",
+    "checked_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "target": {
+      "type": "string",
+      "description": "Which app or foundation component this status covers. Use 'core' for foundation core, or the app_id for app migrations."
+    },
+    "schema_namespace": {
+      "type": "string",
+      "description": "PostgreSQL schema namespace for this target."
+    },
+    "current_version": {
+      "type": ["string", "null"],
+      "description": "Currently applied migration version. Null if no migrations have been applied."
+    },
+    "expected_version": {
+      "type": "string",
+      "description": "Expected migration version per app or foundation declaration."
+    },
+    "migration_required": {
+      "type": "boolean",
+      "description": "True if current_version does not match expected_version."
+    },
+    "pending_migrations": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Optional. Count of pending migration steps. Not content — only a count."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["current", "pending", "failed", "unknown"],
+      "description": "Migration state. 'current' means all expected migrations are applied. 'pending' means migrations are waiting. 'failed' means a migration error occurred. 'unknown' means state cannot be determined."
+    },
+    "last_error_class": {
+      "type": ["string", "null"],
+      "enum": [
+        "migration_failure",
+        "connection_failure",
+        "integrity_failure",
+        "compatibility_failure",
+        null
+      ],
+      "description": "Error category if status is 'failed'. No free-form text."
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO8601 timestamp of when this status was last checked."
+    }
+  }
+}

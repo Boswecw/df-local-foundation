@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""DF Local Foundation — db-export tool.
+
+Exports a single registered schema namespace with integrity envelope.
+The namespace must be registered in core_app_registry — unregistered namespaces
+are blocked.
+
+Usage:
+  db-export --namespace NAME --output-path PATH
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from core.config.settings import load_settings
+from core.lifecycle.manager import LifecycleManager, LifecycleStatus
+from core.export.manager import ExportManager
+
+
+async def _is_namespace_registered(pool, namespace: str) -> bool:
+    """Check that the namespace exists in core_app_registry."""
+    if namespace == "core":
+        return True  # Core is always implicitly registered
+    row = await pool.fetchrow(
+        "SELECT 1 FROM core_app_registry WHERE schema_namespace = $1",
+        namespace,
+    )
+    return row is not None
+
+
+async def main(namespace: str, output_path: Path) -> int:
+    try:
+        settings = load_settings()
+    except Exception as exc:
+        print(f"ERROR: Configuration invalid: {exc}", file=sys.stderr)
+        return 1
+
+    lifecycle = LifecycleManager(settings)
+
+    try:
+        state = await lifecycle.start()
+    except Exception as exc:
+        print(f"ERROR: Cannot start lifecycle: {exc}", file=sys.stderr)
+        return 1
+
+    if state.status != LifecycleStatus.READY:
+        print(f"ERROR: Foundation is not ready (status={state.status.value}). Cannot export.", file=sys.stderr)
+        await lifecycle.stop()
+        return 1
+
+    assert lifecycle._pool is not None
+
+    # Block export of unregistered namespaces
+    if not await _is_namespace_registered(lifecycle._pool, namespace):
+        print(
+            f"ERROR: Namespace '{namespace}' is not registered in core_app_registry. "
+            "Only registered namespaces may be exported.",
+            file=sys.stderr,
+        )
+        await lifecycle.stop()
+        return 1
+
+    manager = ExportManager(settings, lifecycle._pool)
+    result = await manager.export(namespace=namespace, output_path=output_path)
+
+    await lifecycle.stop()
+
+    if result.success:
+        assert result.envelope is not None
+        print(f"Export completed: {result.output_path}")
+        print(f"Namespace:        {result.envelope.namespace}")
+        print(f"Integrity hash:   {result.envelope.integrity_hash}")
+        print(f"Schema version:   {result.envelope.schema_version}")
+        return 0
+    else:
+        print(f"ERROR: Export failed [{result.error_class}]", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Export a DF Local schema namespace")
+    parser.add_argument("--namespace", required=True, help="Schema namespace to export")
+    parser.add_argument("--output-path", required=True, type=Path, help="Output path for export file")
+    args = parser.parse_args()
+
+    sys.exit(asyncio.run(main(namespace=args.namespace, output_path=args.output_path)))

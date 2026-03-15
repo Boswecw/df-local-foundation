@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+"""DF Local Foundation — db-status tool.
+
+Reports lifecycle status, migration state, and health.
+Output is validated against contracts/health.schema.json before emission.
+If the output fails contract validation, the tool exits non-zero — no raw dump.
+
+Usage:
+  db-status [--json]
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import jsonschema
+
+from core.config.settings import load_settings
+from core.lifecycle.manager import LifecycleManager, LifecycleStatus
+from core.health.reporter import HealthReporter, PrivacyViolationError
+
+SCHEMA_PATH = Path(__file__).parent.parent / "contracts" / "health.schema.json"
+HEALTH_SCHEMA = json.loads(SCHEMA_PATH.read_text())
+
+
+async def main(output_json: bool) -> int:
+    try:
+        settings = load_settings()
+    except Exception as exc:
+        print(f"ERROR: Configuration invalid: {exc}", file=sys.stderr)
+        return 1
+
+    lifecycle = LifecycleManager(settings)
+
+    try:
+        state = await lifecycle.status()
+    except Exception as exc:
+        print(f"ERROR: Status check failed: {type(exc).__name__}", file=sys.stderr)
+        return 1
+
+    try:
+        health = HealthReporter.from_state(state)
+    except PrivacyViolationError as exc:
+        # A privacy violation in the status surface is a system fault.
+        print(f"SECURITY FAULT: Privacy boundary violation in status surface.", file=sys.stderr)
+        print(f"Detail: {exc}", file=sys.stderr)
+        return 2
+    except ValueError as exc:
+        # Contract schema validation failed — do not emit raw data
+        print(f"ERROR: Status response failed contract validation: {exc}", file=sys.stderr)
+        return 1
+
+    d = health.to_dict()
+
+    # Final contract validation before any output — belt and suspenders.
+    # If this fails, emit nothing and exit non-zero.
+    try:
+        jsonschema.validate(instance=d, schema=HEALTH_SCHEMA)
+    except jsonschema.ValidationError as exc:
+        print(
+            f"ERROR: Status response does not conform to health contract. "
+            f"Refusing to emit. [{exc.message}]",
+            file=sys.stderr,
+        )
+        return 1
+
+    if output_json:
+        print(health.to_json(indent=2))
+    else:
+        print(f"Status:    {d['status']}")
+        print(f"Schema:    {d['schema_version']} (expected: {d['expected_schema_version']})")
+        print(f"Migration: {'required' if d['migration_required'] else 'current'}")
+        print(f"Mode:      {d['app_mode']}")
+        print(f"Started:   {d['started_at']}")
+        if d.get("last_error_class"):
+            print(f"Error:     {d['last_error_class']}")
+
+    await lifecycle.stop()
+
+    return 0 if state.status == LifecycleStatus.READY else 1
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Report DF Local Foundation status")
+    parser.add_argument("--json", action="store_true", help="Output as JSON")
+    args = parser.parse_args()
+
+    sys.exit(asyncio.run(main(output_json=args.json)))

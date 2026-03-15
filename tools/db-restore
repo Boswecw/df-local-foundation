@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""DF Local Foundation — db-restore tool.
+
+Restores from a backup with full validation before applying.
+Fail-closed: any validation failure blocks the restore.
+
+Envelope output is filtered to only the declared safe fields —
+no customer data, no domain metadata, no raw error messages.
+
+Usage:
+  db-restore --input-path PATH --confirm [--allow-unsigned] [--dry-run]
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from core.config.settings import load_settings
+from core.lifecycle.manager import LifecycleManager
+from core.backup.manager import BackupManager, RestoreBlockedError
+
+# Fields permitted in operator-visible envelope output.
+# Must not include customer data, domain metadata, or raw error content.
+_SAFE_ENVELOPE_FIELDS = {
+    "app_id",
+    "schema_version",
+    "foundation_version",
+    "backup_at",
+    "integrity_hash",
+    "format_version",
+    "includes_namespaces",
+    "envelope_hmac",
+}
+
+
+def _print_safe_envelope(sidecar_path: Path) -> None:
+    """Print only the safe envelope fields to stdout."""
+    try:
+        data = json.loads(sidecar_path.read_text())
+        safe = {k: v for k, v in data.items() if k in _SAFE_ENVELOPE_FIELDS}
+        for k, v in safe.items():
+            print(f"  {k}: {v}")
+    except Exception:
+        print("  (envelope could not be read)", file=sys.stderr)
+
+
+async def main(input_path: Path, confirm: bool, allow_unsigned: bool, dry_run: bool) -> int:
+    try:
+        settings = load_settings()
+    except Exception as exc:
+        print(f"ERROR: Configuration invalid: {exc}", file=sys.stderr)
+        return 1
+
+    lifecycle = LifecycleManager(settings)
+
+    try:
+        state = await lifecycle.start()
+    except Exception as exc:
+        print(f"ERROR: Cannot start lifecycle: {exc}", file=sys.stderr)
+        return 1
+
+    assert lifecycle._pool is not None
+
+    manager = BackupManager(settings, lifecycle._pool)
+
+    if dry_run:
+        print("Dry run: validating backup without applying...")
+
+    sidecar_path = input_path.with_suffix(".envelope.json")
+    if sidecar_path.exists():
+        print("Envelope:")
+        _print_safe_envelope(sidecar_path)
+
+    try:
+        await manager.restore(
+            input_path=input_path,
+            confirm=confirm,
+            allow_unsigned=allow_unsigned,
+            dry_run=dry_run,
+        )
+        if dry_run:
+            print("Dry run: all validation passed. No changes applied.")
+        else:
+            print("Restore completed successfully.")
+        return_code = 0
+    except RestoreBlockedError as exc:
+        # Emit only the error_class — not the full reason (may contain path info)
+        print(f"ERROR: Restore blocked [{exc.error_class}]", file=sys.stderr)
+        return_code = 1
+
+    await lifecycle.stop()
+    return return_code
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Restore a DF Local Foundation backup")
+    parser.add_argument("--input-path", required=True, type=Path, help="Path to backup file")
+    parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Required: explicit operator confirmation to apply the restore",
+    )
+    parser.add_argument(
+        "--allow-unsigned",
+        action="store_true",
+        help="Accept backups without HMAC envelope signature (not recommended)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run all validation without applying the restore",
+    )
+    args = parser.parse_args()
+
+    if not args.confirm:
+        print("ERROR: --confirm is required. Restore requires explicit operator intent.", file=sys.stderr)
+        sys.exit(1)
+
+    sys.exit(asyncio.run(
+        main(
+            input_path=args.input_path,
+            confirm=args.confirm,
+            allow_unsigned=args.allow_unsigned,
+            dry_run=args.dry_run,
+        )
+    ))

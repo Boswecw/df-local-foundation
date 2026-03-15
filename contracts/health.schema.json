@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "df-local-foundation/health",
+  "title": "DFLocalHealthStatus",
+  "description": "Coarse health and operational status for a DF Local Foundation instance. This is the maximum visibility surface for control-plane consumers. No customer or domain data may appear here.",
+  "type": "object",
+  "required": [
+    "status",
+    "schema_version",
+    "expected_schema_version",
+    "migration_required",
+    "started_at",
+    "db_engine",
+    "ownership",
+    "app_mode"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["ready", "degraded", "unavailable", "migrating"],
+      "description": "Coarse lifecycle state. Must not be 'ready' while any migration is pending or any error is unresolved."
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "Currently applied migration version identifier."
+    },
+    "expected_schema_version": {
+      "type": "string",
+      "description": "Expected migration version per app/foundation declaration."
+    },
+    "migration_required": {
+      "type": "boolean",
+      "description": "True if schema_version is behind expected_schema_version."
+    },
+    "last_error_class": {
+      "type": ["string", "null"],
+      "enum": [
+        "migration_failure",
+        "connection_failure",
+        "integrity_failure",
+        "compatibility_failure",
+        "startup_failure",
+        "restore_blocked",
+        null
+      ],
+      "description": "Error category. No free-form text, no stack traces, no content fragments."
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO8601 timestamp of when this lifecycle instance was started."
+    },
+    "db_engine": {
+      "type": "string",
+      "const": "postgresql",
+      "description": "Always 'postgresql' for local foundation instances."
+    },
+    "ownership": {
+      "type": "string",
+      "const": "app-local",
+      "description": "Always 'app-local' for local foundation instances."
+    },
+    "app_mode": {
+      "type": "string",
+      "enum": ["local", "hybrid", "cloud-enabled"],
+      "description": "Operating mode of the registered app."
+    },
+    "backup_available": {
+      "type": "boolean",
+      "description": "Optional. True if a recent backup is available. No content exposed."
+    },
+    "last_backup_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Optional. Timestamp of last successful backup. Null if none."
+    },
+    "export_available": {
+      "type": "boolean",
+      "description": "Optional. True if export tooling is available."
+    }
+  }
+}

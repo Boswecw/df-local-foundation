@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""DF Local Foundation — db-backup tool.
+
+Creates a versioned, HMAC-signed backup with integrity envelope.
+Logs the operation to core_backup_log.
+
+The target namespaces must be registered in core_app_registry.
+Unregistered namespaces are blocked.
+
+Usage:
+  db-backup --output-path PATH [--namespaces core,authorforge]
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from core.config.settings import load_settings
+from core.lifecycle.manager import LifecycleManager, LifecycleStatus
+from core.backup.manager import BackupManager
+
+
+async def _get_registered_namespaces(pool) -> set[str]:
+    """Return all registered schema namespaces from core_app_registry."""
+    rows = await pool.fetch("SELECT schema_namespace FROM core_app_registry")
+    # Always include 'core' — it is the foundation itself
+    return {"core"} | {row["schema_namespace"] for row in rows}
+
+
+async def main(output_path: Path, namespaces: list[str]) -> int:
+    try:
+        settings = load_settings()
+    except Exception as exc:
+        print(f"ERROR: Configuration invalid: {exc}", file=sys.stderr)
+        return 1
+
+    lifecycle = LifecycleManager(settings)
+
+    try:
+        state = await lifecycle.start()
+    except Exception as exc:
+        print(f"ERROR: Cannot start lifecycle: {exc}", file=sys.stderr)
+        return 1
+
+    if state.status != LifecycleStatus.READY:
+        print(f"ERROR: Foundation is not ready (status={state.status.value}). Cannot backup.", file=sys.stderr)
+        await lifecycle.stop()
+        return 1
+
+    assert lifecycle._pool is not None
+
+    # Verify all requested namespaces are registered — block unregistered namespaces
+    registered = await _get_registered_namespaces(lifecycle._pool)
+    unregistered = set(namespaces) - registered
+    if unregistered:
+        print(
+            f"ERROR: Unregistered namespaces requested: {sorted(unregistered)}. "
+            "Only registered namespaces may be backed up.",
+            file=sys.stderr,
+        )
+        await lifecycle.stop()
+        return 1
+
+    manager = BackupManager(settings, lifecycle._pool)
+    result = await manager.backup(output_path=output_path, namespaces=namespaces)
+
+    await lifecycle.stop()
+
+    if result.success:
+        assert result.envelope is not None
+        print(f"Backup completed: {result.output_path}")
+        print(f"Integrity hash:   {result.envelope.integrity_hash}")
+        print(f"HMAC:             {result.envelope.envelope_hmac or 'unsigned'}")
+        print(f"Schema version:   {result.envelope.schema_version}")
+        print(f"Namespaces:       {', '.join(result.envelope.includes_namespaces)}")
+        return 0
+    else:
+        print(f"ERROR: Backup failed [{result.error_class}]", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Create a DF Local Foundation backup")
+    parser.add_argument("--output-path", required=True, type=Path, help="Output path for backup file")
+    parser.add_argument(
+        "--namespaces",
+        default="core",
+        help="Comma-separated namespaces to include (default: core)",
+    )
+    args = parser.parse_args()
+
+    namespaces = [n.strip() for n in args.namespaces.split(",")]
+    sys.exit(asyncio.run(main(output_path=args.output_path, namespaces=namespaces)))
