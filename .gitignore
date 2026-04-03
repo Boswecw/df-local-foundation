@@ -15,3 +15,5 @@ htmlcov/
 signing.key
 *.dump
 *.envelope.json
+
+context-bundle.md
