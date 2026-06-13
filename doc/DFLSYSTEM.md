@@ -96,12 +96,18 @@ df-local-foundation/
 
 This baseline stack inventory is inferred from repository markers and directory layout.
 
-### 3.1 Detected Surfaces
+### 3.1 Stack
 
-| Layer | Marker | Current interpretation |
-| --- | --- | --- |
-| Persistence / Schemas | `alembic/`, `migrations/`, `db/`, `sql/`, `models/`, or `schemas/` present | Database, migration, or schema layer detected |
-| AI / Governance / Ops | `prompts/`, `analytics/`, `evals/`, `registry/`, `tools/`, or `governance/` present | AI-adjacent, governance, or operational surfaces detected |
+| Layer | Technology |
+| --- | --- |
+| Language | Python ≥ 3.11 |
+| Database driver | `asyncpg` (PostgreSQL) |
+| Config / validation | `pydantic` v2 + `pydantic-settings`; `jsonschema` for contract validation |
+| HTTP health API (optional, `app/`) | `fastapi` + `uvicorn` — install via `".[api]"` |
+| Tests / lint / types | `pytest` + `pytest-asyncio`, `ruff`, `mypy` (dev extra) |
+
+The core library and CLI tools require only the base dependencies; FastAPI/uvicorn are an optional
+extra needed solely to run the health API (`python -m app`).
 
 ---
 
@@ -111,13 +117,14 @@ This baseline stack inventory is inferred from repository markers and directory 
 
 ```text
 df-local-foundation/
-├── contracts/
-├── core/
+├── app/          # read-only HTTP health API (FastAPI; see §8)
+├── contracts/    # JSON Schema contracts (health, migration-status, app-registration)
+├── core/         # lifecycle, health reporter, config, backup/export
 ├── doc/
 ├── docs/
-├── sql/
+├── sql/          # core.* migrations + per-app attach (sql/apps/<app>)
 ├── tests/
-├── tools/
+├── tools/        # db-status / db-backup / db-export / db-restore CLIs
 ```
 
 ### 4.2 Documentation Rule
@@ -130,15 +137,34 @@ df-local-foundation/
 
 ## 5. Configuration & Environment
 
-This baseline section has not yet enumerated every environment variable or configuration file.
+Configuration is the canonical contract in `core/config/settings.py` (`FoundationSettings`,
+pydantic-settings). All attaching apps must use these env variable names — do not invent
+alternatives. Config is a hard-fail surface: invalid combinations raise on construction
+(fail-closed), and the `prod-local` profile forbids default credentials and wildcard host binds.
 
-### 5.1 Current Status
+### 5.1 Environment variables
 
-| Surface | Status |
-| --- | --- |
-| Environment variable inventory | Not yet expanded in this baseline |
-| Config ownership mapping | Not yet expanded in this baseline |
-| Protocol requirement | Every env var must be documented here as this repo matures |
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DF_LOCAL_HOST` | `127.0.0.1` | PostgreSQL host. |
+| `DF_LOCAL_PORT` | `5432` | PostgreSQL port. |
+| `DF_LOCAL_DB` | _(required)_ | Database name. |
+| `DF_LOCAL_USER` | _(required)_ | Database user. |
+| `DF_LOCAL_PASSWORD` | _(required)_ | Database password. |
+| `DF_LOCAL_DATA_DIR` | `/var/lib/df-local` | Data directory. |
+| `DF_LOCAL_APP_ID` | _(required)_ | Owning app identifier (must not be `core`). |
+| `DF_LOCAL_APP_MODE` | `local` | `local` \| `hybrid` \| `cloud-enabled`. |
+| `DF_LOCAL_PROFILE` | `dev` | `dev` \| `test` \| `prod-local` (strict rules in prod-local). |
+| `DF_LOCAL_API_HOST` | `127.0.0.1` | Bind host for the read-only health API (`app/`, §8). |
+| `DF_LOCAL_API_PORT` | `8099` | Bind port for the health API. |
+
+### 5.2 Notes
+
+- `DF_LOCAL_API_HOST` / `DF_LOCAL_API_PORT` are consumed by `python -m app` (the health API).
+  They are part of the canonical settings contract so the API surface is configured the same way
+  as the rest of the foundation; `prod-local` host-binding rules apply to `DF_LOCAL_HOST`.
+- Connection strings are derived in `FoundationSettings` (`connection_string` /
+  `async_connection_string`); apps and tools must not assemble their own.
 
 ---
 
@@ -171,14 +197,38 @@ No obvious frontend surface was detected from the current top-level directory la
 
 ## 8. API Layer
 
-No obvious dedicated API directory was detected from the current top-level directory layout.
+DF Local Foundation exposes a single **read-only HTTP health API** (`app/`, FastAPI). It is the
+control-plane visibility surface for consumers such as ForgeCommand. It serves ONLY the declared
+health surface (`contracts/health.schema.json`) — it never exposes customer data, table contents,
+record counts, or any app's domain schema (e.g. `authorforge.*`).
 
-### 8.1 Current Status
+The foundation is the **only** process permitted to connect to its database; the supporting
+PostgreSQL instance is for the owning application's data. This API lets other services read coarse
+foundation health without any direct database access of their own.
 
-| Surface | Status |
-| --- | --- |
-| Endpoint inventory | Expand with real routes and shapes if this repo exposes APIs |
-| Middleware and auth | Expand when the transport contract is cataloged |
+### 8.1 Endpoints
+
+| Method | Path | DB? | Returns |
+| --- | --- | --- | --- |
+| GET | `/live` | no | Process liveness: `{ service, version, status: "live" }`. Never touches the database. |
+| GET | `/health` | yes | `DFLocalHealthStatus` (per `contracts/health.schema.json`): `status` (ready/degraded/unavailable/migrating), `schema_version`, `expected_schema_version`, `migration_required`, `last_error_class`, `started_at`, `db_engine`, `ownership`, `app_mode`. Fails closed: reports `unavailable` when the database is unreachable. |
+
+### 8.2 Implementation
+
+- `app/main.py` — `create_app()` builds the FastAPI app; a lifespan connects the
+  `LifecycleManager` once at startup and fails closed (logs, does not crash) if the database is
+  down. `/health` flows through the existing `HealthReporter`, so the privacy boundary and JSON
+  Schema contract validation are enforced at the serialization layer, not just the data layer.
+- `app/__main__.py` — `python -m app` runs uvicorn on `DF_LOCAL_API_HOST:DF_LOCAL_API_PORT`.
+- Optional dependency group: `pip install -e ".[api]"` (FastAPI + uvicorn). The core library and
+  CLI tools do not require it.
+
+### 8.3 Boundaries
+
+- No mutation endpoints. No authentication is performed here — the surface carries no sensitive
+  data and binds to a local address by configuration.
+- The response shape is owned by `contracts/health.schema.json`; adding a field requires changing
+  the contract first (see §6 Change Control).
 
 ---
 

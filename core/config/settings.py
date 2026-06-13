@@ -63,6 +63,10 @@ class FoundationSettings(BaseSettings):
     df_local_app_id: str = Field(alias="DF_LOCAL_APP_ID")
     df_local_app_mode: AppMode = Field(default=AppMode.LOCAL, alias="DF_LOCAL_APP_MODE")
 
+    # --- HTTP health API (read-only control-plane surface; see app/main.py) ---
+    df_local_api_host: str = Field(default="127.0.0.1", alias="DF_LOCAL_API_HOST")
+    df_local_api_port: int = Field(default=8099, alias="DF_LOCAL_API_PORT")
+
     # --- Profile ---
     df_local_profile: str = Field(
         default="dev",

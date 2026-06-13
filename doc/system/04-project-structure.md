@@ -4,13 +4,14 @@
 
 ```text
 df-local-foundation/
-├── contracts/
-├── core/
+├── app/          # read-only HTTP health API (FastAPI; see §8)
+├── contracts/    # JSON Schema contracts (health, migration-status, app-registration)
+├── core/         # lifecycle, health reporter, config, backup/export
 ├── doc/
 ├── docs/
-├── sql/
+├── sql/          # core.* migrations + per-app attach (sql/apps/<app>)
 ├── tests/
-├── tools/
+├── tools/        # db-status / db-backup / db-export / db-restore CLIs
 ```
 
 ### 4.2 Documentation Rule
