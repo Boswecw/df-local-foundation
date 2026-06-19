@@ -22,6 +22,7 @@ AI memory.
 - `docs/operational-visibility.md` - bounded status visibility
 - `docs/app-integration-contract.md` - app registration and attachment
 - `docs/contracts/read-only-analytics-target-role.md` - bounded read-only analytics support role
+- `docs/contracts/local-api-target-roles.md` - remaining DF Local API target roles
 - `docs/backup-export-restore.md` - backup/export/restore safety
 
 ## Code Mirror
