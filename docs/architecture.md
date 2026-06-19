@@ -1,135 +1,37 @@
-# DF Local Foundation — Architecture
+# DataForge Local Foundation Architecture
 
-**Version:** v1.1
-**Date:** 2026-03-15
+**Status:** source authority baseline.
+**Scope:** local-system proving repo.
 
----
+## Role
 
-## Purpose
+DataForge Local is the local durable-truth substrate for Forge systems. It owns
+local substrate structure, registry records, migration posture, service status,
+lineage/proving records, and bounded operational visibility.
 
-DF Local Foundation is the **shared local-first PostgreSQL control surface** for Forge ecosystem applications.
+It does not own product-domain meaning, customer content, entitlement authority,
+or application-specific review/promote workflows.
 
-Its job is to give Forge apps a shared local data discipline while preserving:
+## Ownership Boundary
 
-- app-owned authority over domain truth
-- privacy-first operation (customer content stays local by default)
-- bounded operational visibility (control-plane consumers see only declared state)
-- disciplined lifecycle, migration, and backup posture
+| Concern | DataForge Local posture |
+| --- | --- |
+| Local PostgreSQL schemas and migrations | Owned for DataForge Local schemas |
+| Service/schema registry records | Owned as local substrate metadata |
+| Readiness, migration, degradation, fault class | Owned as status metadata |
+| Application domain data | Not owned |
+| ForgeCommand orchestration | Observed through bounded status, not raw DB access |
+| AI model/provider choice | Not owned |
 
----
+## Current Proof Surfaces
 
-## What DF Local Foundation Owns
+- `doc/system/` and generated `doc/DLOSYSTEM.md` are the canonical code mirror.
+- `alembic/versions/` is the migration source.
+- `app/api/*_router.py` exposes bounded API surfaces.
+- `tests/` and `tests/proving_slice/` prove deterministic local behavior.
 
-| Concern | Owned by Foundation |
-|---------|-------------------|
-| Local PostgreSQL lifecycle (init/start/stop/status) | Yes |
-| Readiness checks | Yes |
-| Degraded / unavailable / migrating classification | Yes |
-| Canonical env variable names and config conventions | Yes |
-| Migration tooling choice and execution rules | Yes |
-| Schema version tracking | Yes |
-| Health / status contract shape | Yes |
-| Backup convention | Yes |
-| Export metadata envelope | Yes |
-| Restore validation rules | Yes |
-| App registration and compatibility shape | Yes |
-| Shared core SQL (`core_*` tables) | Yes (minimal set only) |
+## Design Rule
 
----
-
-## What DF Local Foundation Does Not Own
-
-| Concern | Owned by |
-|---------|---------|
-| Manuscript / document content | AuthorForge |
-| Lore / world-building entities | AuthorForge |
-| Campaign / outreach business tables | App-specific |
-| Market / watchlist / strategy entities | App-specific |
-| Project / workspace domain truth | Each owning app |
-| App-specific review / promotion semantics | Each owning app |
-| Billing / subscription authority | ForgeCommand / cloud |
-| AI memory or provenance canon | Not any single local layer |
-
----
-
-## System Diagram
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    ForgeCommand                          │
-│         (declared status only — no raw DB access)       │
-└─────────────┬───────────────────────────────────────────┘
-              │ health / readiness / migration state
-              │ (bounded visibility contract)
-┌─────────────▼───────────────────────────────────────────┐
-│               DF Local Foundation                        │
-│    (lifecycle · migration · health · backup/export)      │
-└──────┬──────────────────────────────────┬───────────────┘
-       │ schema attachment                │ bounded contracts
-┌──────▼──────┐                  ┌───────▼────────────────┐
-│ App Schema  │                  │  NeuronForge Local      │
-│ (app-owned) │                  │  (bounded read/write    │
-│             │                  │   — never truth owner)  │
-└─────────────┘                  └────────────────────────┘
-```
-
----
-
-## Shared Core Surface (Minimal)
-
-Only tables that justify themselves as **cross-app discipline** belong in the shared core.
-
-Allowed:
-
-| Table | Purpose |
-|-------|---------|
-| `core_app_registry` | Registered apps and compatibility declarations |
-| `core_schema_versions` | Migration tracking per app |
-| `core_backup_log` | Audit log of backup operations |
-| `core_export_log` | Audit log of export operations |
-| `core_health_events` | Coarse health transition log |
-
-Rejected from core: anything that is business meaning for a specific app.
-
----
-
-## App Attachment Model
-
-Apps attach to DF Local Foundation by:
-
-1. Registering in `core_app_registry` (app ID, version, compatibility declaration, mode)
-2. Owning their own schema namespace (e.g., `authorforge.*`)
-3. Managing their own migrations within their namespace
-4. Declaring readiness via the health contract
-
-The foundation does not own or control app-domain schemas. It provides the lifecycle surface that apps run on top of.
-
----
-
-## App Modes
-
-| Mode | Meaning |
-|------|---------|
-| `local` | Customer data stays fully local, no cloud sync |
-| `hybrid` | Local authority with optional cloud augmentation |
-| `cloud-enabled` | Cloud features active, local remains authoritative for domain data |
-
----
-
-## Design Biases
-
-- **Fewer shared tables** over more
-- **Coarse health signals** over detailed introspection
-- **Fail closed** on ambiguous state
-- **Explicit operator actions** over silent background operations
-- **Declared contracts** over inspection
-
----
-
-## Non-Goals (Permanent)
-
-- Making DF Local the billing or entitlement authority
-- Giving ForgeCommand customer-data introspection powers
-- Turning NeuronForge Local into canonical memory owner
-- Replacing DataForge cloud responsibilities
-- Building a "one schema to rule them all" abstraction layer
+Prefer explicit local records over inference. When status is ambiguous,
+DataForge Local reports blocked, degraded, or unavailable posture instead of
+inventing readiness.

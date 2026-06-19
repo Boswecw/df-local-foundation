@@ -1,106 +1,30 @@
-# DF Local Foundation — Migration Doctrine
+# DataForge Local Migration Doctrine
 
-**Version:** v1.1
-**Date:** 2026-03-15
+**Status:** source authority baseline.
+**Scope:** local-system proving repo.
 
----
+## Canonical Tooling
 
-## Migration Tool
+DataForge Local uses Alembic migrations under `alembic/versions/`.
 
-The foundation uses **Alembic** (Python) as the canonical migration tool for core migrations.
+## Current Proof Surfaces
 
-Apps manage their own migrations within their own schema namespace using the same tool.
+- `alembic/env.py` defines offline and online migration execution.
+- `alembic/versions/20260402_02_create_substrate_core_tables.py` creates
+  `migration_registry`.
+- `alembic/versions/20260402_04_create_service_status_tables.py` exposes
+  `migration_required` and `compatibility_blocked` status fields.
 
----
+## Rules
 
-## Naming Rules
+- Migration state must be explicit.
+- Pending or failed migrations must not be reported as ready.
+- Migration failures must preserve an operator-visible error class.
+- Application-specific domain migrations remain app-owned unless explicitly
+  admitted into DataForge Local.
 
-Core migrations:
+## Promotion Boundary
 
-```
-sql/core/NNNN_description.sql
-```
-
-Where `NNNN` is a zero-padded integer sequence (e.g., `0001`, `0002`).
-
-App migrations (in the app repo):
-
-```
-migrations/YYYYMMDD_HHMMSS_description.sql
-```
-
-Apps must not use the `core_` schema namespace prefix.
-
----
-
-## Execution Order Rules
-
-1. Core foundation migrations run first on startup.
-2. App migrations run after core migrations complete successfully.
-3. Partial migration state is reported as `migrating` — never `ready`.
-4. Any migration failure halts startup and reports `unavailable`.
-
----
-
-## Startup Migration Posture
-
-On process start:
-
-1. Connect to local PostgreSQL.
-2. Check `core_schema_versions` for pending core migrations.
-3. If pending: apply in sequence, fail closed on any error.
-4. Report final state via health contract.
-
-**Do not silently skip failed migrations.** A migration failure is a hard stop.
-
----
-
-## Schema Version Reporting
-
-Schema version is reported in the health contract as:
-
-```json
-{
-  "schema_version": "0002",
-  "expected_schema_version": "0002",
-  "migration_required": false
-}
-```
-
-If `schema_version` < `expected_schema_version`, status is `migrating` (or `unavailable` if migration cannot proceed).
-
----
-
-## Rollback Posture
-
-Foundation core migrations are designed to be forward-only. Rollback is an operator action requiring:
-
-1. Manual intervention with explicit confirmation
-2. A restore from backup where appropriate
-3. Validation that the rolled-back state passes integrity checks
-
-**There is no automatic rollback.** Silent rollback hides failures.
-
----
-
-## App Schema Attachment
-
-Apps attach their own schema to the same PostgreSQL instance by:
-
-1. Declaring their schema namespace in `core_app_registry`
-2. Running their own migrations against their own namespace
-3. Reporting their own schema version through their registration record
-
-The foundation does not run, own, or inspect app-level migrations.
-
----
-
-## Invalid States
-
-| State | Classification | Response |
-|-------|---------------|---------|
-| Core migration pending at startup | `migrating` | Apply migrations or fail |
-| Core migration error | `unavailable` | Halt; surface error class |
-| Schema version mismatch (pending) | `migrating` | Block `ready` promotion |
-| Unknown migration version | `unavailable` | Fail closed |
-| App declares incompatible core version | Reject registration | Log as fault |
+The support copy may reference migration posture and Alembic as source-backed
+truth. Exact app migration path conventions require app-specific proof before
+promotion.
