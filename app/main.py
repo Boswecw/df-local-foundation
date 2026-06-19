@@ -22,7 +22,9 @@ from fastapi import Depends, FastAPI, Request
 
 from app.analytics_services import AsyncpgAnalyticsReader
 from app.api.analytics_router import register_analytics_routes
+from app.api.context_pack_router import register_context_pack_routes
 from app.api.public_applications_router import register_public_applications_routes
+from app.context_pack_services import AsyncpgContextPackReader
 from app.public_applications_services import AsyncpgPublicApplicationsReader
 from core.config.settings import FOUNDATION_VERSION, load_settings
 from core.health.reporter import HealthReporter
@@ -47,6 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.lifecycle = lifecycle
     app.state.reporter = HealthReporter(lifecycle)
     app.state.analytics_reader = AsyncpgAnalyticsReader(settings.connection_string)
+    app.state.context_pack_reader = AsyncpgContextPackReader(settings.connection_string)
     app.state.public_applications_reader = AsyncpgPublicApplicationsReader(settings.connection_string)
     try:
         yield
@@ -82,6 +85,7 @@ def create_app(
         return response.to_dict()
 
     register_analytics_routes(app)
+    register_context_pack_routes(app)
     register_public_applications_routes(app)
 
     return app

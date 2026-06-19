@@ -24,12 +24,12 @@ source API behavior for:
 
 The following surface is active as a support-native read-only adapter:
 
+- `GET /df/rag/context-pack/{context_pack_id}`
 - `GET /api/v1/public-applications`
 
 The following surfaces may be considered for future support-native read-only
 adapter promotion:
 
-- `GET /df/rag/context-pack/{context_pack_id}`
 - `GET /api/v1/healing-proposals`
 - `GET /api/v1/healing-proposals/{proposal_id}`
 - `GET /api/v1/lineage/nodes`
