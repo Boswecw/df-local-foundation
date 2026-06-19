@@ -1,90 +1,32 @@
 # DF Local Foundation
 
-**Version:** v1.1
-**Date:** 2026-03-15
-**Status:** Active
+DF Local Foundation is the app-support local PostgreSQL control surface for
+Forge applications.
 
----
+It owns lifecycle, migration-status reporting, coarse health/readiness,
+backup/export/restore tooling, and app registration conventions. It does not
+own app business schemas, customer domain truth, billing authority, or canonical
+AI memory.
 
-## What This Is
+## Status
 
-DF Local Foundation is the **shared local PostgreSQL control surface** for Forge ecosystem applications.
+- Version: `v1.1`
+- State: active app-support reference
+- Closeout: `docs/closeout-initial-governed-implementation.md`
 
-It provides:
+## Documentation
 
-- disciplined local database lifecycle
-- canonical migration and schema version reporting
-- coarse health/readiness/status contracts
-- backup / export / restore doctrine and tooling
-- app registration and compatibility conventions
-- bounded integration contracts for ForgeCommand and NeuronForge Local
+- `docs/architecture.md` - purpose, boundaries, and design rules
+- `docs/privacy-doctrine.md` - privacy boundary
+- `docs/migration-doctrine.md` - migration framework
+- `docs/operational-visibility.md` - bounded status visibility
+- `docs/app-integration-contract.md` - app registration and attachment
+- `docs/backup-export-restore.md` - backup/export/restore safety
 
-It is **not** DataForge (the cloud persistence service).
-It is **not** a universal business-schema repository.
-It is **not** a control-plane inspection backdoor.
+## Code Mirror
 
----
+`doc/system/` is the canonical code mirror. Rebuild the assembled mirror with:
 
-## What It Does Not Own
-
-- App business schemas (manuscripts, lore, campaigns, watchlists, etc.)
-- Customer domain truth of any kind
-- Billing or subscription authority
-- Any canonical memory surface for AI consumers
-
-See [docs/privacy-doctrine.md](docs/privacy-doctrine.md) for the full boundary definition.
-
----
-
-## Directory Structure
-
+```bash
+bash doc/system/BUILD.sh
 ```
-df-local-foundation/
-  docs/                          # Doctrine and contract documentation
-  contracts/                     # JSON Schema contracts
-  sql/core/                      # Shared core SQL migrations
-  core/
-    lifecycle/                   # DB start / stop / status / readiness
-    config/                      # Env contract and connection conventions
-    health/                      # Health reporting surface
-    backup/                      # Backup utilities
-    export/                      # Export utilities
-  tools/                         # Operator CLI tools
-  tests/                         # Contract and boundary tests
-```
-
----
-
-## Tools
-
-| Tool | Purpose |
-|------|---------|
-| `tools/db-status` | Report lifecycle status and migration state |
-| `tools/db-backup` | Create a versioned local backup |
-| `tools/db-restore` | Restore with integrity and compatibility checks |
-| `tools/db-export` | Export with metadata envelope |
-
----
-
-## Docs
-
-| Document | Purpose |
-|----------|---------|
-| [architecture.md](docs/architecture.md) | System purpose, boundaries, and design rules |
-| [privacy-doctrine.md](docs/privacy-doctrine.md) | Privacy boundary definition |
-| [migration-doctrine.md](docs/migration-doctrine.md) | Migration framework and execution rules |
-| [operational-visibility.md](docs/operational-visibility.md) | What control-plane consumers may see |
-| [app-integration-contract.md](docs/app-integration-contract.md) | How apps attach and register |
-| [backup-export-restore.md](docs/backup-export-restore.md) | Backup/export/restore safety rules |
-
----
-
-## Invariants
-
-1. App-local domain truth stays app-owned.
-2. DF Local Foundation stays minimal.
-3. ForgeCommand sees declared operational state only.
-4. NeuronForge Local is not the owner of canonical truth.
-5. Restore / export / backups are versioned and integrity-checked.
-6. Suspicious or ambiguous states fail closed.
-7. Local-first remains meaningful even when hybrid/cloud options exist.
