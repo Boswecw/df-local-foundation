@@ -21,6 +21,7 @@ AI memory.
 - `docs/migration-doctrine.md` - migration framework
 - `docs/operational-visibility.md` - bounded status visibility
 - `docs/app-integration-contract.md` - app registration and attachment
+- `docs/contracts/read-only-analytics-target-role.md` - future read-only analytics target role
 - `docs/backup-export-restore.md` - backup/export/restore safety
 
 ## Code Mirror
