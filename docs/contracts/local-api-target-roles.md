@@ -2,8 +2,9 @@
 
 ## Status
 
-Target roles opened for remaining DF Local source API candidates. Runtime,
-routes, migrations, schemas, and write behavior are not promoted in this slice.
+Target roles opened for remaining DF Local source API candidates. The
+public-applications read-only lane is promoted as a support-native adapter.
+Other runtime, migrations, schemas, and write behavior are not promoted.
 
 ## Source Authority
 
@@ -21,6 +22,10 @@ source API behavior for:
 
 ## Read-Only Candidate Lane
 
+The following surface is active as a support-native read-only adapter:
+
+- `GET /api/v1/public-applications`
+
 The following surfaces may be considered for future support-native read-only
 adapter promotion:
 
@@ -32,7 +37,6 @@ adapter promotion:
 - `GET /api/v1/lineage/nodes/{node_id}/downstream`
 - `GET /api/v1/proving-slice/queue`
 - `GET /api/v1/proving-slice/queue/{staged_promotion_id}`
-- `GET /api/v1/public-applications`
 
 Future promotion must adapt these to the support app's async foundation boundary,
 keep them read-only, and return explicit unavailable/degraded status when the
