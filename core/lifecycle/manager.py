@@ -196,7 +196,7 @@ class LifecycleManager:
         except MigrationLockTimeout:
             logger.info(
                 "df_local.migration_lock_contention",
-                msg="Another process holds the migration lock — reporting migrating",
+                extra={"detail": "Another process holds the migration lock - reporting migrating"},
             )
             return LifecycleState(
                 status=LifecycleStatus.MIGRATING,

@@ -11,6 +11,7 @@ Acceptance criteria:
 from __future__ import annotations
 
 import json
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
 
 import jsonschema
@@ -27,7 +28,7 @@ TOOL_PATH = Path(__file__).parent.parent.parent / "tools"
 def _load_tool_module(name: str):
     """Load a tool script as a Python module for direct testing."""
     path = TOOL_PATH / name
-    spec = importlib.util.spec_from_file_location(name, path)
+    spec = importlib.util.spec_from_loader(name, SourceFileLoader(name, str(path)))
     mod = importlib.util.module_from_spec(spec)  # type: ignore
     spec.loader.exec_module(mod)  # type: ignore
     return mod

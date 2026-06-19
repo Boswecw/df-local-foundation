@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 from app.main import create_app, get_reporter
 from core.config.settings import AppMode
@@ -52,7 +52,7 @@ def _state(status: LifecycleStatus, **overrides: object) -> LifecycleState:
     return LifecycleState(**base)  # type: ignore[arg-type]
 
 
-def _client(status: LifecycleStatus, **overrides: object) -> TestClient:
+def _app_with_reporter(status: LifecycleStatus, **overrides: object) -> FastAPI:
     app = create_app(lifespan_factory=_noop_lifespan)
     response = HealthReporter.from_state(_state(status, **overrides))
 
@@ -60,22 +60,30 @@ def _client(status: LifecycleStatus, **overrides: object) -> TestClient:
         async def get_health(self) -> object:
             return response
 
-    app.dependency_overrides[get_reporter] = lambda: _StubReporter()
-    return TestClient(app)
+    async def _override_reporter() -> _StubReporter:
+        return _StubReporter()
+
+    app.dependency_overrides[get_reporter] = _override_reporter
+    return app
 
 
-def test_live_does_not_touch_database() -> None:
+@pytest.mark.asyncio
+async def test_live_does_not_touch_database() -> None:
     # /live must answer without any reporter/DB dependency.
-    client = TestClient(create_app(lifespan_factory=_noop_lifespan))
-    res = client.get("/live")
+    app = create_app(lifespan_factory=_noop_lifespan)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res = await client.get("/live")
     assert res.status_code == 200
     body = res.json()
     assert body["status"] == "live"
     assert body["service"] == "df-local-foundation"
 
 
-def test_health_reports_ready() -> None:
-    res = _client(LifecycleStatus.READY).get("/health")
+@pytest.mark.asyncio
+async def test_health_reports_ready() -> None:
+    app = _app_with_reporter(LifecycleStatus.READY)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res = await client.get("/health")
     assert res.status_code == 200
     body = res.json()
     assert body["status"] == "ready"
@@ -84,13 +92,16 @@ def test_health_reports_ready() -> None:
     assert body["db_engine"] == "postgresql"
 
 
-def test_health_reports_unavailable_when_db_down() -> None:
-    res = _client(
+@pytest.mark.asyncio
+async def test_health_reports_unavailable_when_db_down() -> None:
+    app = _app_with_reporter(
         LifecycleStatus.UNAVAILABLE,
         schema_version="unknown",
         migration_required=True,
         last_error_class=ErrorClass.CONNECTION_FAILURE,
-    ).get("/health")
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res = await client.get("/health")
     assert res.status_code == 200
     body = res.json()
     assert body["status"] == "unavailable"
@@ -98,13 +109,16 @@ def test_health_reports_unavailable_when_db_down() -> None:
 
 
 @pytest.mark.parametrize("status", list(LifecycleStatus))
-def test_health_never_leaks_domain_fields(status: LifecycleStatus) -> None:
+@pytest.mark.asyncio
+async def test_health_never_leaks_domain_fields(status: LifecycleStatus) -> None:
     # The contract: a health response is the maximum control-plane surface — no domain data.
     extra = (
         {"schema_version": "unknown", "migration_required": True}
         if status is LifecycleStatus.UNAVAILABLE
         else {}
     )
-    res = _client(status, **extra).get("/health")
+    app = _app_with_reporter(status, **extra)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res = await client.get("/health")
     assert res.status_code == 200
     assert BANNED_FIELDS.isdisjoint(res.json().keys())

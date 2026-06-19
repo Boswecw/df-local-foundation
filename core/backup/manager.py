@@ -298,7 +298,10 @@ class BackupManager:
                     ),
                     error_class="integrity_failure",
                 )
-            logger.warning("df_local.restore_unsigned_envelope_accepted", app_id=envelope.app_id)
+            logger.warning(
+                "df_local.restore_unsigned_envelope_accepted",
+                extra={"app_id": envelope.app_id},
+            )
         else:
             try:
                 signing_key = self._get_signing_key()

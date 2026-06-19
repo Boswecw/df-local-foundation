@@ -70,7 +70,7 @@ def create_app(
         return {"service": "df-local-foundation", "version": FOUNDATION_VERSION, "status": "live"}
 
     @app.get("/health")
-    async def health(reporter: Annotated[HealthReporter, Depends(get_reporter)]) -> dict[str, Any]:
+    async def health(reporter: Annotated[Any, Depends(get_reporter)]) -> dict[str, Any]:
         # DB-aware foundation health, validated against contracts/health.schema.json by the reporter.
         response = await reporter.get_health()
         return response.to_dict()
