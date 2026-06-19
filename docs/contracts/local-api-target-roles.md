@@ -2,10 +2,9 @@
 
 ## Status
 
-Target roles opened for remaining DF Local source API candidates. The
-public-applications, context-pack, and healing-proposals read-only lanes are
-promoted as support-native adapters. The lineage read-only lane is promoted as
-a support-native adapter.
+Target roles opened for remaining DF Local source API candidates. The active
+read-only lanes are promoted as support-native adapters: public-applications,
+context-pack, healing-proposals, lineage, and proving-slice queue.
 Other runtime, migrations, schemas, and write behavior are not promoted.
 
 ## Source Authority
@@ -33,16 +32,12 @@ The following surface is active as a support-native read-only adapter:
 - `GET /api/v1/lineage/nodes`
 - `GET /api/v1/lineage/nodes/{node_id}`
 - `GET /api/v1/lineage/nodes/{node_id}/downstream`
-
-The following surfaces may be considered for future support-native read-only
-adapter promotion:
-
 - `GET /api/v1/proving-slice/queue`
 - `GET /api/v1/proving-slice/queue/{staged_promotion_id}`
 
-Future promotion must adapt these to the support app's async foundation boundary,
-keep them read-only, and return explicit unavailable/degraded status when the
-source tables cannot be read.
+Future read promotion must adapt source behavior to the support app's async
+foundation boundary, keep it read-only, and return explicit
+unavailable/degraded status when the source tables cannot be read.
 
 ## Durable Truth Hold Lane
 

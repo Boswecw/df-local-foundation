@@ -25,10 +25,12 @@ from app.api.analytics_router import register_analytics_routes
 from app.api.context_pack_router import register_context_pack_routes
 from app.api.healing_proposal_router import register_healing_proposal_routes
 from app.api.lineage_router import register_lineage_routes
+from app.api.proving_slice_queue_router import register_proving_slice_queue_routes
 from app.api.public_applications_router import register_public_applications_routes
 from app.context_pack_services import AsyncpgContextPackReader
 from app.healing_proposal_services import AsyncpgHealingProposalReader
 from app.lineage_services import AsyncpgLineageReader
+from app.proving_slice_queue_services import AsyncpgProvingSliceQueueReader
 from app.public_applications_services import AsyncpgPublicApplicationsReader
 from core.config.settings import FOUNDATION_VERSION, load_settings
 from core.health.reporter import HealthReporter
@@ -56,6 +58,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.context_pack_reader = AsyncpgContextPackReader(settings.connection_string)
     app.state.healing_proposal_reader = AsyncpgHealingProposalReader(settings.connection_string)
     app.state.lineage_reader = AsyncpgLineageReader(settings.connection_string)
+    app.state.proving_slice_queue_reader = AsyncpgProvingSliceQueueReader(
+        settings.connection_string
+    )
     app.state.public_applications_reader = AsyncpgPublicApplicationsReader(settings.connection_string)
     try:
         yield
@@ -94,6 +99,7 @@ def create_app(
     register_context_pack_routes(app)
     register_healing_proposal_routes(app)
     register_lineage_routes(app)
+    register_proving_slice_queue_routes(app)
     register_public_applications_routes(app)
 
     return app
