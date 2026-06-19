@@ -4,7 +4,8 @@
 
 Target roles opened for remaining DF Local source API candidates. The
 public-applications, context-pack, and healing-proposals read-only lanes are
-promoted as support-native adapters.
+promoted as support-native adapters. The lineage read-only lane is promoted as
+a support-native adapter.
 Other runtime, migrations, schemas, and write behavior are not promoted.
 
 ## Source Authority
@@ -29,13 +30,13 @@ The following surface is active as a support-native read-only adapter:
 - `GET /api/v1/public-applications`
 - `GET /api/v1/healing-proposals`
 - `GET /api/v1/healing-proposals/{proposal_id}`
+- `GET /api/v1/lineage/nodes`
+- `GET /api/v1/lineage/nodes/{node_id}`
+- `GET /api/v1/lineage/nodes/{node_id}/downstream`
 
 The following surfaces may be considered for future support-native read-only
 adapter promotion:
 
-- `GET /api/v1/lineage/nodes`
-- `GET /api/v1/lineage/nodes/{node_id}`
-- `GET /api/v1/lineage/nodes/{node_id}/downstream`
 - `GET /api/v1/proving-slice/queue`
 - `GET /api/v1/proving-slice/queue/{staged_promotion_id}`
 
