@@ -2,7 +2,9 @@
 
 ## Status
 
-Target role opened; runtime, routes, models, migrations, and schema not promoted.
+Runtime role active for the bounded read-only analytics surface. Models, compute
+logic, and routes are promoted as support-native adapters. Migrations remain
+outside this promotion.
 
 ## Source Authority
 
@@ -20,12 +22,12 @@ Current source authority evidence:
 - `tests/api/test_analytics_routes.py`
 - `tests/api/test_analytics_compute.py`
 
-## Target Role
+## Active Support Role
 
 DF Local app support may receive a future read-only analytics promotion only as
 the bounded app-support visibility side of the local-system analytics substrate.
 
-The support target role is limited to:
+The support role is limited to:
 
 - exposing derived local-system analytics payloads
 - preserving `_derived: true` and `schema_version: v1`
@@ -39,25 +41,31 @@ The support target role is limited to:
 
 This target role does not authorize:
 
-- copying analytics routes, models, services, migrations, or tests in this slice
 - adding write endpoints under the analytics namespace
 - treating derived analytics as canonical app-domain records
 - silently hiding stale, partial, or degraded status
 - adding cloud promotion behavior
 - changing AuthorForge, ForgeCommand, or other app workflows
 - storing durable GNAT or semantic-candidate records in DF Local support
+- promoting local-system analytics migrations into app support
 
-## Promotion Gate
+## Promoted Support Files
 
-Before any read-only analytics file is promoted into app support, the promotion
-slice must name:
+The active support-native runtime lives in:
 
-- exact files to promote
-- source proof command
-- support proof command
-- support service contract or adapter target
-- post-promotion drift report
-- rollback path
+- `app/analytics_config.py`
+- `app/analytics_models.py`
+- `app/analytics_services.py`
+- `app/api/analytics_router.py`
+- `tests/api/test_analytics_compute.py`
+- `tests/api/test_analytics_routes.py`
 
-Until that gate exists, read-only analytics runtime and schema remain
-`source_local_hold` in the promotion ledger.
+The router exposes only:
+
+- `GET /api/v1/analytics/overview`
+- `GET /api/v1/analytics/systems`
+- `GET /api/v1/analytics/queue`
+- `GET /api/v1/analytics/freshness`
+
+If the foundation cannot read the analytics source tables, routes return an
+explicit `503` with `error_class: analytics_read_failure`.

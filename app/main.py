@@ -20,6 +20,8 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Request
 
+from app.analytics_services import AsyncpgAnalyticsReader
+from app.api.analytics_router import register_analytics_routes
 from core.config.settings import FOUNDATION_VERSION, load_settings
 from core.health.reporter import HealthReporter
 from core.lifecycle.manager import LifecycleManager, LifecycleStartError
@@ -42,6 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.warning("df_local.api.start_degraded error_class=%s", exc.error_class.value)
     app.state.lifecycle = lifecycle
     app.state.reporter = HealthReporter(lifecycle)
+    app.state.analytics_reader = AsyncpgAnalyticsReader(settings.connection_string)
     try:
         yield
     finally:
@@ -74,6 +77,8 @@ def create_app(
         # DB-aware foundation health, validated against contracts/health.schema.json by the reporter.
         response = await reporter.get_health()
         return response.to_dict()
+
+    register_analytics_routes(app)
 
     return app
 
