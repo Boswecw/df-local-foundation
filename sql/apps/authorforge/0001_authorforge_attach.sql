@@ -8,10 +8,14 @@
 -- Invariants this migration proves:
 -- 1. AuthorForge uses its own namespace (authorforge.*) — never core.*
 -- 2. Foundation core tables are not touched here (only inserted into)
--- 3. AuthorForge domain tables (manuscripts, lore, etc.) live in authorforge.* only
+-- 3. authorforge.* here holds AuthorForge's EXTERNAL-FACING / SUPPORT data only
+--    (projections, public intake, entitlements cache, operational tables —
+--    created in 0002). The author's PRIVATE writing (manuscripts, chapters,
+--    scenes, lore, canon) lives in AuthorForge's embedded user-data database and
+--    never comes here.
 -- 4. ForgeCommand can read health state without accessing any authorforge.* tables
 --
--- After this migration, authorforge.* is the exclusive domain of AuthorForge.
+-- After this migration, authorforge.* is the exclusive namespace of AuthorForge.
 -- Foundation does not own, query, or inspect authorforge.* tables.
 
 BEGIN;
@@ -69,16 +73,17 @@ COMMIT;
 
 -- -------------------------------------------------------
 -- Post-attachment note:
--- AuthorForge domain migrations (manuscripts, lore, characters, etc.)
--- are managed in the AuthorForge repo under authorforge.* namespace.
--- They are NOT included here. This file only proves the attachment shape.
+-- AuthorForge's SUPPORT tables (the external-facing surface) are created in
+-- 0002_authorforge_support_schema.sql under the authorforge.* namespace and are
+-- managed from the AuthorForge repo. This file only proves the attachment shape.
 --
--- Example of what AuthorForge manages in its own migrations:
---   CREATE TABLE authorforge.manuscripts ( ... );
---   CREATE TABLE authorforge.lore_entries ( ... );
---   CREATE TABLE authorforge.characters ( ... );
+-- What lives in authorforge.* here (created in 0002):
+--   CREATE TABLE authorforge.public_content_projection ( ... );
+--   CREATE TABLE authorforge.public_support_ticket ( ... );
+--   CREATE TABLE authorforge.entitlements ( ... );
 --   etc.
 --
--- None of those tables appear in this file.
--- Foundation has no knowledge of or interest in their schema.
+-- The author's PRIVATE writing (manuscripts, chapters, scenes, lore, canon) does
+-- NOT live here — it stays in AuthorForge's embedded user-data database.
+-- Foundation has no knowledge of or interest in any authorforge.* table schema.
 -- -------------------------------------------------------

@@ -9,7 +9,7 @@ df-local-foundation/
 ├── core/         # lifecycle, health reporter, config, backup/export
 ├── doc/
 ├── docs/
-├── sql/          # core.* migrations + per-app attach (sql/apps/<app>)
+├── sql/          # core.* migrations + per-app attach + app schema (sql/apps/<app>)
 ├── tests/
 ├── tools/        # db-status / db-backup / db-export / db-restore CLIs
 ```
