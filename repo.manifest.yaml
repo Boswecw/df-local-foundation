@@ -1,0 +1,103 @@
+schema_version: "RepoManifest.v1"
+
+repo:
+  full_name: "Boswecw/df-local-foundation"
+  local_name: "df-local-foundation"
+  package_name: "df-local-foundation"
+  default_branch: "main"
+  repo_class: "local_authority_store"
+
+identity:
+  product_name: "DF Local Foundation"
+  one_line: "App-support local PostgreSQL control surface for Forge applications."
+  authority_role: "local_data_control_and_readiness_substrate"
+
+owns:
+  - local PostgreSQL lifecycle support
+  - migration-status reporting
+  - coarse health and readiness truth
+  - backup, export, and restore tooling
+  - app registration conventions
+  - bounded read-only analytics target roles
+
+does_not_own:
+  - app business schemas
+  - customer domain truth
+  - billing authority
+  - canonical AI memory
+  - model routing
+  - public app UX
+
+upstream_authorities:
+  Forge Local Runtime:
+    owns: "shared local-runtime doctrine, service-only posture, and cross-service boundary language"
+  AuthorForge:
+    owns: "app business data shape, writer workflow, and public product UX"
+  DataForge Cloud:
+    owns: "canonical systems memory and durable global facts"
+  ForgeCustomer:
+    owns: "customer identity, billing, licensing, subscriptions, and privacy"
+
+downstream_consumers:
+  - AuthorForge
+  - Forge_Command
+  - local support services requiring PostgreSQL readiness
+
+canonical_files:
+  - repo.manifest.yaml
+  - README.md
+  - SYSTEM.md
+  - pyproject.toml
+  - doc/DFLSYSTEM.md
+  - doc/system/_index.md
+  - docs/architecture.md
+  - docs/app-integration-contract.md
+
+generated_files:
+  - AGENTS.md
+  - CLAUDE.md
+  - CODEX.md
+  - GEMINI.md
+
+agent_edit_policy:
+  may_edit:
+    - app/**
+    - core/**
+    - contracts/**
+    - tests/**
+    - sql/**
+    - docs/**
+    - doc/system/**
+    - scripts/**
+  must_not_edit_directly:
+    - AGENTS.md
+    - CLAUDE.md
+    - CODEX.md
+    - GEMINI.md
+  must_regenerate:
+    - AGENTS.md
+    - CLAUDE.md
+    - CODEX.md
+    - GEMINI.md
+
+verification:
+  required_identity_checks:
+    - repository_full_name
+    - local_directory_name
+    - package_name
+    - README title
+    - default_branch
+    - canonical_files_exist
+    - generated_instruction_hashes_match
+  test_commands:
+    - python3 -m pytest
+  build_commands:
+    - bash doc/system/BUILD.sh
+  safety_rules:
+    - "DF Local Foundation reports local data-control readiness; it does not own app business truth."
+    - "Backup/export/restore surfaces must preserve explicit operator intent and local privacy boundaries."
+    - "Do not promote local readiness into canonical memory without the proper DataForge authority."
+  llm_rules:
+    - "Start from the real repo root at /home/charlie/Forge/apps/public-app-local-support/df-local-foundation."
+    - "Keep app registration and readiness contracts bounded to local support."
+    - "Do not add billing, customer, AI-routing, or public UX authority here."

@@ -7,7 +7,7 @@ Manifest hash: sha256:5261c3906a7ad8428198661e18baf2f1bd03a346f623b2fbe18b35d813
 Receipt: receipts/repo-context/latest.json
 -->
 
-# CLAUDE.md - DF Local Foundation Agent Instructions
+# GEMINI.md - DF Local Foundation Agent Instructions
 
 ## Repo Identity
 
