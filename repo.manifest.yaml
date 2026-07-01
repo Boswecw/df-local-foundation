@@ -1,7 +1,7 @@
 schema_version: "RepoManifest.v1"
 
 repo:
-  full_name: "Boswecw/df-local-foundation"
+  full_name: "Boswell-Digital-Solutions/df-local-foundation"
   local_name: "df-local-foundation"
   package_name: "df-local-foundation"
   default_branch: "main"
