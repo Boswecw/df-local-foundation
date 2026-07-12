@@ -1,5 +1,7 @@
 # Overview
 
+> **System identity — Forge family (public-app local support).** This service is the app-support local PostgreSQL control surface for Forge public-facing applications and lives in `apps/public-app-local-support`. It is **not** the bds counterpart `ecosystem/local-systems/dataforge-Local`.
+
 **Document version:** 1.0 (bootstrap scaffold)
 
 System identity, role, and boundary with the rest of the Forge ecosystem.

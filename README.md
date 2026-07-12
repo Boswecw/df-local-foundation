@@ -1,4 +1,9 @@
-# DF Local Foundation
+# Forge · df-local-foundation
+
+> **System identity — Forge family (public-app local support).**
+> App-support local PostgreSQL control surface for Forge **public-facing applications**; part of `apps/public-app-local-support`.
+> **Purpose:** owns lifecycle, migration-status reporting, coarse health/readiness, and backup/export/restore tooling for app-registered Postgres instances.
+> **Not the bds counterpart:** the business-side local operator is `ecosystem/local-systems/dataforge-Local` (bds family).
 
 DF Local Foundation is the app-support local PostgreSQL control surface for
 Forge applications.
